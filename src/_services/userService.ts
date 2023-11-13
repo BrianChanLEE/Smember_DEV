@@ -6,27 +6,12 @@ import { sendVerificationEmail } from "@/src/lib/mailer"; // nodemailer를 사�
 import { logger } from "@/src/middleware/logger";
 import { signJwtAccessToken } from "@/src/lib/jwt";
 import bcrypt from "bcrypt";
-
-interface RegisterRequestBody {
-  email: string;
-  verificationCode: number;
-}
-
-interface LoginRequestBody {
-  username: string;
-  verificationCode: number;
-}
-
-interface DeleteUserRequestBody {
-  email: string;
-  verificationCode: number;
-}
+import { now } from "next-auth/client/_utils";
 
 //회원가입
-export async function registerUser(req) {
+export async function registerUser(req: any) {
   try {
-    const body: RegisterRequestBody = req.body;
-    if (!body.email || !body.verificationCode) {
+    if (!req.email || !req.verificationCode) {
       return new Response(
         JSON.stringify({ error: "Missing email or verification code" }),
         { status: 401 }
@@ -35,7 +20,7 @@ export async function registerUser(req) {
 
     // 이메일 중복 확인
     const existingUser = await prisma.users.findUnique({
-      where: { email: body.email },
+      where: { email: req.email },
     });
     if (existingUser) {
       return new Response(JSON.stringify({ error: "Email already in use" }), {
@@ -46,8 +31,8 @@ export async function registerUser(req) {
     // 검증 코드 확인
     const validCode = await prisma.verification_codes.findFirst({
       where: {
-        email: body.email,
-        verification_code: body.verificationCode,
+        email: req.email,
+        verification_code: req.verificationCode,
       },
     });
     if (!validCode) {
@@ -60,12 +45,25 @@ export async function registerUser(req) {
     // 사용자 데이터 저장
     const newUser = await prisma.users.create({
       data: {
-        email: body.email,
-        verificationCode: body.verificationCode,
+        email: req.email,
+        verificationCode: req.verificationCode,
+        createdAt: new Date(),
+        isVerified: false,
       },
     });
 
-    console.debug("New user registered:", newUser);
+    // 사용자를 성공적으로 등록한 후 isVerified를 true로 업데이트
+    const updatedUser = await prisma.users.update({
+      where: {
+        email: req.email,
+      },
+      data: {
+        isVerified: true,
+        updatedAt: new Date(),
+      },
+    });
+
+    console.debug("New user registered and verified:", updatedUser);
 
     return new Response(JSON.stringify(newUser), { status: 201 });
   } catch (error) {
@@ -138,7 +136,7 @@ export async function loginUser(req: any) {
 }
 
 // 회원탈퇴 함수
-export async function deleteUser(req) {
+export async function deleteUser(req: any) {
   try {
     const { email, verificationCode }: DeleteUserRequestBody = await req.json();
 
@@ -183,7 +181,7 @@ export async function deleteUser(req) {
 }
 
 //검증코드 발송
-export async function sendVerificationCode(req) {
+export async function sendVerificationCode(req: any) {
   try {
     // 사용자 확인
     const user = await prisma.users.findUnique({
@@ -200,8 +198,18 @@ export async function sendVerificationCode(req) {
         data: {
           email: req.email,
           verification_code: verificationCode,
+          expires_at: new Date(Date.now() + 18000000), //시간제한 30분 제한시간후 데이터 삭제
         },
       });
+      setTimeout(async () => {
+        await prisma.verification_codes.deleteMany({
+          where: {
+            expires_at: {
+              lt: new Date(), // 현재 시간보다 이전인 만료 시간을 가진 데이터 삭제
+            },
+          },
+        });
+      }, 60000); // 매 분마다 확인
     } else {
       // 기존 사용자인 경우, 사용자의 검증 코드를 업데이트
       await prisma.users.update({

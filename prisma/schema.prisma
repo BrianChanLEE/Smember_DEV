@@ -294,8 +294,8 @@ model users {
   role             users_role @default(User)
   verificationCode String?    @db.VarChar(255)
   isVerified       Boolean    @default(false)
-  createdAt        DateTime   @db.DateTime(0)
-  updatedAt        DateTime   @db.DateTime(0)
+  createdAt        DateTime?  @db.DateTime(0)
+  updatedAt        DateTime?  @db.DateTime(0)
   notices          notices[]
 }
 

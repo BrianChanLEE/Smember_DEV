@@ -1,7 +1,4 @@
 import { Params } from "next/dist/shared/lib/router/utils/route-matcher";
-interface SendVerificationCodeRequestBody {
-  email: string;
-}
 
 // import { Params } from "next/dist/shared/lib/router/utils/route-matcher";
 // // app/api/users/[query]/route.ts
@@ -250,6 +247,26 @@ import {
   sendVerificationCode,
 } from "@/src/_services/userService";
 
+interface RegisterRequestBody {
+  email: string;
+  verificationCode: number;
+  createdAt: Date;
+  isVerified: boolean;
+}
+
+interface LoginRequestBody {
+  username: string;
+  verificationCode: number;
+}
+
+interface DeleteUserRequestBody {
+  email: string;
+  verificationCode: number;
+}
+
+interface SendVerificationCodeRequestBody {
+  email: string;
+}
 export async function POST(
   request: Request,
 
@@ -260,6 +277,9 @@ export async function POST(
   switch (actionKind) {
     case "login":
       try {
+        const data = await request.json();
+        const body: SendVerificationCodeRequestBody = data;
+
         await loginUser(request);
       } catch (error) {
         if (error instanceof Error) {
@@ -270,11 +290,38 @@ export async function POST(
 
     case "register":
       try {
-        await registerUser(request);
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error(error.message);
+        const data = await request.json();
+        const body: RegisterRequestBody = data;
+
+        // 입력값 검증
+        if (!body.email || !body.verificationCode) {
+          return new Response(
+            JSON.stringify({ error: "Missing email or verification code" }),
+            { status: 401 }
+          );
         }
+
+        // 사용자 등록
+        await registerUser(body);
+        console.log("body :" + body);
+        // 성공 응답 반환
+        return new Response(
+          JSON.stringify({
+            message: "User registered successfully",
+          }),
+          { status: 200 }
+        );
+      } catch (error) {
+        // 오류 로깅
+        if (error instanceof Error) {
+          console.error("Registration error:", error.message);
+        }
+
+        // 오류 응답 반환
+        return new Response(
+          JSON.stringify({ error: "Failed to register user" }),
+          { status: 500 }
+        );
       }
       break;
 
@@ -290,8 +337,7 @@ export async function POST(
             { status: 400 }
           );
         }
-        // console.log(" sendVerificationCode:" + "start");
-        // console.log("body :" + body);
+
         await sendVerificationCode(body);
         console.log("body :" + body);
         return new Response(
