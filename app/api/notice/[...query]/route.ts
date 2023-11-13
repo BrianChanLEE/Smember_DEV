@@ -1,4 +1,4 @@
-import * as noticeControllers from "@/src/controllers/notice. controllers";
+import * as noticeControllers from "@/src/_services/noticeService";
 import { NextApiRequest, NextApiResponse } from "next";
 import { NextApiRequestQuery } from "next/dist/server/api-utils";
 import { logger } from "@/src/middleware/logger";
@@ -19,6 +19,7 @@ const handler = async (
           const allNotice = await noticeControllers.FindAllNotice(req, res);
           res.json(allNotice);
         } else if (query1 === "FindOneNotice") {
+          req.query.id = query2;
           const getNotice = await noticeControllers.FindOneNotice(req, res);
           res.json(getNotice);
         } else if (query1 === "PublishedNotice") {
@@ -37,6 +38,7 @@ const handler = async (
     case "PUT":
       if (query1 === "editNotice") {
         try {
+          req.query.id = query2;
           const Update = await noticeControllers.updateNotice(req, res);
           res.json(Update);
         } catch (error) {
@@ -51,6 +53,7 @@ const handler = async (
     case "DELETE":
       try {
         if (query1 === "deleteNotice") {
+          req.query.id = query2;
           const deleteOneResult = await noticeControllers.deletesNotice(
             req,
             res

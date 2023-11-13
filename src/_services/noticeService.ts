@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { PrismaClient } from "@prisma/client";
 import { logger } from "@/src/middleware/logger";
+import { verifyJwt } from "@/src/lib/jwt";
 
 const prisma = new PrismaClient();
 
@@ -42,7 +43,7 @@ export const FindAllNotice = async (
   req: NextApiRequest,
   res: NextApiResponse
 ) => {
-  const page = req.url.split("?")[1].split("page=")[1] || 1;
+  const page = parseInt(req.query.page as string) || 1;
   const pageSize = 10;
   const offset = (page - 1) * pageSize;
   const totalItems = await prisma.notices.count();
@@ -56,15 +57,19 @@ export const FindAllNotice = async (
           contains: subject || undefined, // subject가 없으면 undefined로 처리
         },
       },
+      skip: offset,
+      take: pageSize,
     });
 
-    res.json(data);
+    res.json({ notices: data, totalPages });
   } catch (error) {
     if (error instanceof Error) {
       logger.error(error.message);
       console.error(error.message);
+      res
+        .status(500)
+        .send({ message: "오류가 발생했습니다: " + error.message });
     }
-    res.status(500).send({ message: "오류가 발생했습니다" });
   }
 };
 
@@ -72,7 +77,20 @@ export const FindOneNotice = async (
   req: NextApiRequest,
   res: NextApiResponse
 ) => {
-  const id = parseInt(req.query.id as string); // req.params 대신 req.query 사용, 문자열을 숫자로 변환
+  // JWT 토큰 검증
+  const accessToken = req.headers.authorization?.split(" ")[1]; // Bearer 토큰 형식 가정
+  if (!accessToken || !verifyJwt(accessToken)) {
+    return res.status(401).json({ error: "No Authorization or invalid token" });
+  }
+
+  const id = parseInt(req.query.id as string);
+
+  // 유효한 숫자인지 확인
+  if (isNaN(id)) {
+    return res.status(400).send({
+      message: "Invalid ID format. ID must be a number.",
+    });
+  }
 
   try {
     const data = await prisma.notices.findUnique({
@@ -101,7 +119,20 @@ export const updateNotice = async (
   req: NextApiRequest,
   res: NextApiResponse
 ) => {
-  const id = parseInt(req.query.id as string); // req.params 대신 req.query 사용, 문자열을 숫자로 변환
+  // JWT 토큰 검증
+  const accessToken = req.headers.authorization?.split(" ")[1]; // Bearer 토큰 형식 가정
+  if (!accessToken || !verifyJwt(accessToken)) {
+    return res.status(401).json({ error: "No Authorization or invalid token" });
+  }
+
+  const id = parseInt(req.query.id as string);
+
+  // 유효한 숫자인지 확인
+  if (isNaN(id)) {
+    return res.status(400).send({
+      message: "Invalid ID format. ID must be a number.",
+    });
+  }
 
   try {
     const updatedNotice = await prisma.notices.update({
@@ -131,7 +162,20 @@ export const deletesNotice = async (
   req: NextApiRequest,
   res: NextApiResponse
 ) => {
-  const id = parseInt(req.query.id as string); // req.params 대신 req.query 사용, 문자열을 숫자로 변환
+  // JWT 토큰 검증
+  const accessToken = req.headers.authorization?.split(" ")[1]; // Bearer 토큰 형식 가정
+  if (!accessToken || !verifyJwt(accessToken)) {
+    return res.status(401).json({ error: "No Authorization or invalid token" });
+  }
+
+  const id = parseInt(req.query.id as string);
+
+  // 유효한 숫자인지 확인
+  if (isNaN(id)) {
+    return res.status(400).send({
+      message: "Invalid ID format. ID must be a number.",
+    });
+  }
 
   try {
     const deletedNotice = await prisma.notices.delete({
@@ -160,6 +204,12 @@ export const deleteAllNotice = async (
   req: NextApiRequest,
   res: NextApiResponse
 ) => {
+  // JWT 토큰 검증
+  const accessToken = req.headers.authorization?.split(" ")[1]; // Bearer 토큰 형식 가정
+  if (!accessToken || !verifyJwt(accessToken)) {
+    return res.status(401).json({ error: "No Authorization or invalid token" });
+  }
+
   try {
     const result = await prisma.notices.deleteMany({}); // 빈 조건으로 모든 데이터 삭제
 
@@ -179,6 +229,12 @@ export const findAllPublishedNotice = async (
   req: NextApiRequest,
   res: NextApiResponse
 ) => {
+  // JWT 토큰 검증
+  const accessToken = req.headers.authorization?.split(" ")[1]; // Bearer 토큰 형식 가정
+  if (!accessToken || !verifyJwt(accessToken)) {
+    return res.status(401).json({ error: "No Authorization or invalid token" });
+  }
+
   try {
     const data = await prisma.notices.findMany({
       where: { status: "PUBLIC" },
