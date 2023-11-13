@@ -1,0 +1,319 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Bank {
+  id            Int      @id @default(autoincrement())
+  name          String?  @db.VarChar(255)
+  accountNum    String?  @db.VarChar(255)
+  accountHolder String   @db.VarChar(255)
+  enabled       Boolean?
+  createdAt     DateTime @db.DateTime(0)
+  updatedAt     DateTime @db.DateTime(0)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model DATABASECHANGELOG {
+  ID            String   @db.VarChar(255)
+  AUTHOR        String   @db.VarChar(255)
+  FILENAME      String   @db.VarChar(255)
+  DATEEXECUTED  DateTime @db.DateTime(0)
+  ORDEREXECUTED Int
+  EXECTYPE      String   @db.VarChar(10)
+  MD5SUM        String?  @db.VarChar(35)
+  DESCRIPTION   String?  @db.VarChar(255)
+  COMMENTS      String?  @db.VarChar(255)
+  TAG           String?  @db.VarChar(255)
+  LIQUIBASE     String?  @db.VarChar(20)
+  CONTEXTS      String?  @db.VarChar(255)
+  LABELS        String?  @db.VarChar(255)
+  DEPLOYMENT_ID String?  @db.VarChar(10)
+
+  @@ignore
+}
+
+model DATABASECHANGELOGLOCK {
+  ID          Int       @id
+  LOCKED      Boolean   @db.Bit(1)
+  LOCKGRANTED DateTime? @db.DateTime(0)
+  LOCKEDBY    String?   @db.VarChar(255)
+}
+
+model Review {
+  id         Int       @id @default(autoincrement())
+  score      Int?
+  title      String?   @db.VarChar(255)
+  detail     String?   @db.VarChar(255)
+  photos     String?   @db.VarChar(255)
+  created_at DateTime? @db.DateTime(0)
+  updated_at DateTime? @db.DateTime(0)
+  removed_at DateTime? @db.DateTime(0)
+  store_id   Int?
+  createdAt  DateTime  @db.DateTime(0)
+  updatedAt  DateTime  @db.DateTime(0)
+}
+
+model agreement {
+  title            String             @id @db.VarChar(32)
+  detail           String?            @db.VarChar(255)
+  created_at       DateTime?          @db.DateTime(6)
+  member_agreement member_agreement[]
+}
+
+model approved_store {
+  id                    BigInt  @id @default(autoincrement())
+  bussiness_number      String? @db.VarChar(255)
+  bussiness_license_url String? @db.VarChar(512)
+  store_id              BigInt  @unique(map: "ux_approved_store__store_id")
+  store                 store   @relation(fields: [store_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_approved_store__store_id")
+}
+
+model bank {
+  id             BigInt        @id @default(autoincrement())
+  name           String        @db.VarChar(45)
+  account_num    String        @db.VarChar(100)
+  account_holder String        @db.VarChar(30)
+  enabled        Boolean       @db.Bit(1)
+  token_order    token_order[]
+}
+
+model feed {
+  id            BigInt        @id @default(autoincrement())
+  writer_id     BigInt
+  template_id   BigInt
+  title         String?       @db.VarChar(256)
+  content       String?       @db.Text
+  created_at    DateTime?     @db.DateTime(6)
+  updated_at    DateTime?     @db.DateTime(6)
+  removed_at    DateTime?     @db.DateTime(6)
+  feed_template feed_template @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_feed_template_id")
+
+  @@index([template_id], map: "fk_feed_template_id")
+}
+
+model feed_template {
+  id         BigInt    @id @default(autoincrement())
+  name       String    @db.VarChar(127)
+  form       String    @db.Text
+  schema     String    @db.VarChar(512)
+  created_at DateTime? @db.DateTime(6)
+  removed_at DateTime? @db.DateTime(6)
+  feed       feed[]
+}
+
+model free_store {
+  id       BigInt   @id @default(autoincrement())
+  due_date DateTime @db.DateTime(6)
+  store_id BigInt   @unique(map: "ux_free_store__store_id")
+  store    store    @relation(fields: [store_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_free_store__store_id")
+}
+
+model jhi_authority {
+  name               String               @id @db.VarChar(50)
+  jhi_user_authority jhi_user_authority[]
+}
+
+model jhi_user {
+  id                 String               @id @db.VarChar(100)
+  login              String               @unique(map: "ux_user_login") @db.VarChar(50)
+  first_name         String?              @db.VarChar(50)
+  last_name          String?              @db.VarChar(50)
+  email              String?              @unique(map: "ux_user_email")
+  image_url          String?              @db.VarChar(256)
+  activated          Boolean              @db.Bit(1)
+  lang_key           String?              @db.VarChar(10)
+  created_by         String               @db.VarChar(50)
+  created_date       DateTime?            @db.Timestamp(0)
+  last_modified_by   String?              @db.VarChar(50)
+  last_modified_date DateTime?            @db.Timestamp(0)
+  verificationCode   String               @db.VarChar(45)
+  jhi_user_authority jhi_user_authority[]
+  member             member?
+}
+
+model jhi_user_authority {
+  user_id        String        @db.VarChar(100)
+  authority_name String        @db.VarChar(50)
+  jhi_authority  jhi_authority @relation(fields: [authority_name], references: [name], onDelete: NoAction, onUpdate: NoAction, map: "fk_authority_name")
+  jhi_user       jhi_user      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_id")
+
+  @@id([user_id, authority_name])
+  @@index([authority_name], map: "fk_authority_name")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model member {
+  id                     BigInt             @id @default(autoincrement())
+  name                   String?            @db.VarChar(128)
+  mobile                 String?            @db.VarChar(32)
+  masterbank_wallet_addr String?            @db.VarChar(255)
+  referral_code          String?            @db.VarChar(45)
+  dealer_code            String?            @unique(map: "dealer_code") @db.VarChar(45)
+  user_id                String             @unique(map: "const_member_user_id_unique") @db.VarChar(100)
+  created_at             DateTime?          @db.DateTime(6)
+  updated_at             DateTime?          @db.DateTime(6)
+  removed_at             DateTime?          @db.DateTime(6)
+  createdAt              DateTime?          @db.DateTime(6)
+  updatedAt              DateTime?          @db.DateTime(6)
+  jhi_user               jhi_user           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_member_user_id")
+  member_agreement       member_agreement[]
+  store                  store[]
+}
+
+model member_agreement {
+  user_id         String    @db.VarChar(100)
+  agreement_title String    @db.VarChar(32)
+  created_at      DateTime  @default(now()) @db.DateTime(0)
+  agreement       agreement @relation(fields: [agreement_title], references: [title], onDelete: NoAction, onUpdate: NoAction, map: "fk_agreement_title")
+  member          member    @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_agreement_user_id")
+
+  @@id([user_id, agreement_title])
+  @@index([agreement_title], map: "fk_agreement_title")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model notices {
+  id        Int            @id @default(autoincrement())
+  subject   String         @db.VarChar(50)
+  contents  String         @db.VarChar(2000)
+  status    notices_status
+  user_id   Int?           @db.UnsignedInt
+  StartDate DateTime       @db.Date
+  EndDate   DateTime       @db.Date
+  users     users?         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "notices_FK")
+
+  @@index([user_id], map: "notices_FK")
+}
+
+model rel_store__tag {
+  tag_id    BigInt
+  store_id  BigInt
+  store     store     @relation(fields: [store_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_rel_store__tag__store_id")
+  store_tag store_tag @relation(fields: [tag_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_rel_store__tag__tag_id")
+
+  @@id([store_id, tag_id])
+  @@index([tag_id], map: "fk_rel_store__tag__tag_id")
+}
+
+model review {
+  id         BigInt    @id @default(autoincrement())
+  score      Int
+  title      String?   @db.VarChar(255)
+  detail     String?   @db.VarChar(1000)
+  photos     String?   @db.VarChar(255)
+  created_at DateTime? @db.DateTime(6)
+  updated_at DateTime? @db.DateTime(6)
+  removed_at DateTime? @db.DateTime(6)
+  store_id   BigInt
+  store      store     @relation(fields: [store_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_review__store_id")
+
+  @@index([store_id], map: "fk_review__store_id")
+}
+
+model store {
+  id             BigInt           @id @default(autoincrement())
+  name           String?          @db.VarChar(65)
+  country        String?          @db.VarChar(45)
+  zip_code       String?          @db.VarChar(121)
+  address        String?          @db.VarChar(121)
+  address_etc    String?          @db.VarChar(121)
+  phone          String?          @db.VarChar(65)
+  open_time      String?          @db.VarChar(255)
+  close_time     String?          @db.VarChar(255)
+  open_days      String?          @db.VarChar(255)
+  website        String?          @db.VarChar(1000)
+  images         String?          @db.VarChar(255)
+  discount_rate  Int?
+  kind           String?          @db.VarChar(128)
+  enabled        Boolean?         @db.Bit(1)
+  referral_code  String?          @db.VarChar(45)
+  permitted_at   DateTime?        @db.DateTime(6)
+  created_at     DateTime?        @db.DateTime(6)
+  updated_at     DateTime?        @db.DateTime(6)
+  removed_at     DateTime?        @db.DateTime(6)
+  member_id      BigInt
+  lat            Float?           @db.Float
+  lng            Float?           @db.Float
+  createdAt      DateTime?        @db.DateTime(6)
+  updatedAt      String?          @db.VarChar(45)
+  approved_store approved_store?
+  free_store     free_store?
+  rel_store__tag rel_store__tag[]
+  review         review[]
+  member         member           @relation(fields: [member_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_store__member_id")
+  token_order    token_order[]
+
+  @@index([member_id], map: "fk_store__member_id")
+}
+
+model store_tag {
+  id             BigInt           @id @default(autoincrement())
+  name           String           @unique(map: "ux_store_tag__name") @db.VarChar(32)
+  rel_store__tag rel_store__tag[]
+}
+
+model token_category {
+  id           BigInt        @id @default(autoincrement())
+  name         String        @db.VarChar(45)
+  price_in_krw Int
+  enabled      Boolean       @db.Bit(1)
+  token_order  token_order[]
+}
+
+model token_order {
+  id                   BigInt         @id @default(autoincrement())
+  buy_amount           Int
+  depositor_name       String         @db.VarChar(45)
+  depositor_amount     Int
+  receiver_wallet_addr String         @db.VarChar(255)
+  state                String         @db.VarChar(255)
+  txid                 String         @db.VarChar(255)
+  enabled              Boolean        @db.Bit(1)
+  updated_at           DateTime?      @db.DateTime(6)
+  created_at           DateTime?      @db.DateTime(6)
+  store_id             BigInt
+  bank_id              BigInt
+  token_category_id    BigInt
+  bank                 bank           @relation(fields: [bank_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_token_order__bank_id")
+  store                store          @relation(fields: [store_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_token_order__store_id")
+  token_category       token_category @relation(fields: [token_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_token_order__token_category_id")
+
+  @@index([bank_id], map: "fk_token_order__bank_id")
+  @@index([store_id], map: "fk_token_order__store_id")
+  @@index([token_category_id], map: "fk_token_order__token_category_id")
+}
+
+model users {
+  id               Int        @id @default(autoincrement()) @db.UnsignedInt
+  email            String     @unique(map: "email") @db.VarChar(255)
+  role             users_role @default(User)
+  verificationCode String?    @db.VarChar(255)
+  isVerified       Boolean    @default(false)
+  createdAt        DateTime   @db.DateTime(0)
+  updatedAt        DateTime   @db.DateTime(0)
+  notices          notices[]
+}
+
+model verification_codes {
+  id                Int       @id @default(autoincrement())
+  email             String    @db.VarChar(255)
+  verification_code String    @db.VarChar(255)
+  created_at        DateTime? @default(now()) @db.DateTime(0)
+  expires_at        DateTime? @db.DateTime(0)
+}
+
+enum users_role {
+  Admin
+  User
+  Influencer
+}
+
+enum notices_status {
+  PUBLIC
+  PRIVATE
+}
