@@ -3,3 +3,7 @@
 {"level":"error","message":"\nInvalid `prisma.users.create()` invocation:\n\n{\n  data: {\n    email: \"brianlee1914@me.com\",\n    verificationCode: \"4kvcfycbhww\",\n    createdAt: new Date(\"1970-01-20T16:11:14.845Z\"),\n+   updatedAt: DateTime\n  }\n}\n\nArgument `updatedAt` is missing."}
 {"level":"error","message":"\nInvalid `prisma.users.create()` invocation:\n\n{\n  data: {\n    email: \"brianlee1914@me.com\",\n    verificationCode: \"4kvcfycbhww\",\n+   createdAt: DateTime\n  }\n}\n\nArgument `createdAt` is missing."}
 {"level":"error","message":"\nInvalid `prisma.users.create()` invocation:\n\n{\n  data: {\n    email: \"brianlee1914@me.com\",\n    verificationCode: \"4kvcfycbhww\",\n+   createdAt: DateTime\n  }\n}\n\nArgument `createdAt` is missing."}
+{"level":"error","message":"req.json is not a function"}
+{"level":"error","message":"req.json is not a function"}
+{"level":"error","message":"req.json is not a function"}
+{"level":"error","message":"body is not defined"}

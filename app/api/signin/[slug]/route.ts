@@ -1,4 +1,171 @@
+import { stringify } from "./../../../../node_modules/postcss/lib/postcss.d";
 import { Params } from "next/dist/shared/lib/router/utils/route-matcher";
+
+import {
+  loginUser,
+  registerUser,
+  sendVerificationCode,
+} from "@/src/_services/userService";
+
+interface RegisterRequestBody {
+  email: string;
+  verificationCode: number;
+  createdAt: Date;
+  isVerified: boolean;
+}
+
+interface LoginRequestBody {
+  username: string;
+  verificationCode: number;
+}
+
+interface DeleteUserRequestBody {
+  email: string;
+  verificationCode: number;
+}
+
+interface SendVerificationCodeRequestBody {
+  email: string;
+}
+export async function POST(
+  request: Request,
+
+  { params }: { params: { slug: string } }
+) {
+  const actionKind = params.slug;
+  console.log("actionKind :" + actionKind);
+  switch (actionKind) {
+    case "login":
+      try {
+        const data = await request.json();
+        const body: LoginRequestBody = data;
+
+        // 요청 본문 검증
+        if (!body.username || !body.verificationCode) {
+          return new Response(
+            JSON.stringify({ error: "이메일과 검증 코드를 입력해 주세요." }),
+            { status: 400 }
+          );
+        }
+
+        const loginResult = await loginUser(body);
+
+        if (loginResult) {
+          // 로그인 성공 및 accessToken 포함하여 응답
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: "Login successful",
+            }),
+            { status: 200 }
+          );
+        } else {
+          // 로그인 실패
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message: "Login failed",
+            }),
+            { status: 401 }
+          );
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error(error.message);
+          return new Response(
+            JSON.stringify({ error: "Internal server error" }),
+            { status: 500 }
+          );
+        }
+      }
+      break;
+
+    case "register":
+      try {
+        const data = await request.json();
+        const body: RegisterRequestBody = data;
+
+        // 입력값 검증
+        if (!body.email || !body.verificationCode) {
+          return new Response(
+            JSON.stringify({ error: "Missing email or verification code" }),
+            { status: 401 }
+          );
+        }
+
+        // 사용자 등록
+        await registerUser(body);
+        console.log("body :" + body);
+        // 성공 응답 반환
+        return new Response(
+          JSON.stringify({
+            message: "User registered successfully",
+          }),
+          { status: 200 }
+        );
+      } catch (error) {
+        // 오류 로깅
+        if (error instanceof Error) {
+          console.error("Registration error:", error.message);
+        }
+
+        // 오류 응답 반환
+        return new Response(
+          JSON.stringify({ error: "Failed to register user" }),
+          { status: 500 }
+        );
+      }
+      break;
+
+    case "Code":
+      try {
+        const data = await request.json();
+        const body: SendVerificationCodeRequestBody = data;
+
+        // 요청 본문 검증
+        if (!body.email) {
+          return new Response(
+            JSON.stringify({ error: "이메일을 입력해 주세요." }),
+            { status: 400 }
+          );
+        }
+
+        // 검증 코드 발송 시도
+        const result = await sendVerificationCode(body);
+
+        // 결과에 따른 처리
+        if (result) {
+          return new Response(
+            JSON.stringify({ success: true, message: "code successful" }),
+            { status: 200 }
+          );
+        } else {
+          console.log("JSON :" + JSON.stringify);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              message: "Code delivery failed.",
+            }),
+            { status: 401 }
+          );
+        }
+      } catch (error) {
+        // 오류 처리
+        console.error("Error sending verification code:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to send verification code" }),
+          { status: 500 }
+        );
+      }
+      break;
+
+    default:
+      return new Response(JSON.stringify({ error: "잘못된 param 입니다" }), {
+        status: 400,
+      });
+      break;
+  }
+}
 
 // import { Params } from "next/dist/shared/lib/router/utils/route-matcher";
 // // app/api/users/[query]/route.ts
@@ -239,123 +406,3 @@ import { Params } from "next/dist/shared/lib/router/utils/route-matcher";
 //   }
 // };
 // export { handler as POST, handler as DELETE };
-
-import {
-  loginUser,
-  registerUser,
-  deleteUser,
-  sendVerificationCode,
-} from "@/src/_services/userService";
-
-interface RegisterRequestBody {
-  email: string;
-  verificationCode: number;
-  createdAt: Date;
-  isVerified: boolean;
-}
-
-interface LoginRequestBody {
-  username: string;
-  verificationCode: number;
-}
-
-interface DeleteUserRequestBody {
-  email: string;
-  verificationCode: number;
-}
-
-interface SendVerificationCodeRequestBody {
-  email: string;
-}
-export async function POST(
-  request: Request,
-
-  { params }: { params: { slug: string } }
-) {
-  const actionKind = params.slug;
-  console.log("actionKind :" + actionKind);
-  switch (actionKind) {
-    case "login":
-      try {
-        const data = await request.json();
-        const body: SendVerificationCodeRequestBody = data;
-
-        await loginUser(request);
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error(error.message);
-        }
-      }
-      break;
-
-    case "register":
-      try {
-        const data = await request.json();
-        const body: RegisterRequestBody = data;
-
-        // 입력값 검증
-        if (!body.email || !body.verificationCode) {
-          return new Response(
-            JSON.stringify({ error: "Missing email or verification code" }),
-            { status: 401 }
-          );
-        }
-
-        // 사용자 등록
-        await registerUser(body);
-        console.log("body :" + body);
-        // 성공 응답 반환
-        return new Response(
-          JSON.stringify({
-            message: "User registered successfully",
-          }),
-          { status: 200 }
-        );
-      } catch (error) {
-        // 오류 로깅
-        if (error instanceof Error) {
-          console.error("Registration error:", error.message);
-        }
-
-        // 오류 응답 반환
-        return new Response(
-          JSON.stringify({ error: "Failed to register user" }),
-          { status: 500 }
-        );
-      }
-      break;
-
-    case "Code":
-      try {
-        const data = await request.json();
-        const body: SendVerificationCodeRequestBody = data;
-        // console.log("body :" + body);
-        // 요청 본문 검증
-        if (!body.email) {
-          return new Response(
-            JSON.stringify({ error: "이메일을 입력해 주세요." }),
-            { status: 400 }
-          );
-        }
-
-        await sendVerificationCode(body);
-        console.log("body :" + body);
-        return new Response(
-          JSON.stringify({ success: true, message: "Verification code sent" }),
-          { status: 200 }
-        );
-      } catch (error) {
-        return new Response(
-          JSON.stringify({ error: "Failed to send verification code" }),
-          { status: 500 }
-        );
-      }
-      break;
-
-    default:
-      return new Response(JSON.stringify({ error: "잘못된 param 입니다" }), {
-        status: 400,
-      });
-      break;
-  }
-}

@@ -80,105 +80,80 @@ export async function registerUser(req: any) {
 // 로그인 함수
 export async function loginUser(req: any) {
   try {
-    const body: LoginRequestBody = await req.json();
-
-    // 요청 본문 검증
-    if (!body.username || !body.verificationCode) {
-      return new Response(
-        JSON.stringify({ error: "이메일과 검증 코드를 입력해 주세요." }),
-        { status: 400 }
-      );
+    if (!req.username || !req.verificationCode) {
+      return { error: "이메일과 검증 코드를 입력해 주세요.", status: 400 };
     }
 
-    // 사용자 확인
     const user = await prisma.users.findUnique({
-      where: { email: body.username },
+      where: { email: req.username },
     });
 
     if (!user) {
-      return new Response(JSON.stringify({ error: "User not found" }), {
-        status: 404,
-      });
+      return { error: "User not found", status: 404 };
     }
 
-    // bcrypt를 사용하여 검증 코드 확인
-    if (
-      user &&
-      (await bcrypt.compare(body.verificationCode, user.verificationCode))
-    ) {
-      // 검증 코드를 제외한 사용자 정보 추출
+    if (await bcrypt.compare(req.verificationCode, user.verificationCode)) {
       const { verificationCode, ...userWithoutCode } = user;
-
-      // JWT 토큰 생성
       const accessToken = signJwtAccessToken(userWithoutCode);
-
-      const result = {
-        ...userWithoutCode,
-        accessToken,
-      };
-
-      return new Response(JSON.stringify(result), { status: 200 });
+      return { ...userWithoutCode, accessToken, status: 200 };
+    } else {
+      return { error: "Invalid verification code", status: 401 };
     }
-
-    return new Response(
-      JSON.stringify({ error: "Invalid verification code" }),
-      { status: 401 }
-    );
   } catch (error) {
-    if (error instanceof Error) {
-      logger.error(error.message);
-      console.error("Login error:", error.message);
-      return new Response(JSON.stringify({ error: "Internal server error" }), {
-        status: 500,
-      });
-    }
+    logger.error(error.message);
+    return { error: "Internal server error", status: 500 };
   }
 }
+// export async function loginUser(req: any) {
+//   try {
+//     // // 요청 본문 검증
+//     // if (!req.username || !req.verificationCode) {
+//     //   return new Response(
+//     //     JSON.stringify({ error: "이메일과 검증 코드를 입력해 주세요." }),
+//     //     { status: 400 }
+//     //   );
+//     // }
 
-// 회원탈퇴 함수
-export async function deleteUser(req: any) {
-  try {
-    const { email, verificationCode }: DeleteUserRequestBody = await req.json();
+//     // 사용자 확인
+//     const user = await prisma.users.findUnique({
+//       where: { email: req.username },
+//     });
 
-    // 요청 본문 검증
-    if (!email || !verificationCode) {
-      return new Response(
-        JSON.stringify({ error: "사용자 ID와 검증 코드를 입력해 주세요." }),
-        { status: 400 }
-      );
-    }
+//     if (!user) {
+//       return new Response(JSON.stringify({ error: "User not found" }), {
+//         status: 404,
+//       });
+//     }
 
-    // 사용자 확인
-    const user = await prisma.users.findUnique({ where: { email: email } });
-    if (!user) {
-      return new Response(JSON.stringify({ error: "User not found" }), {
-        status: 404,
-      });
-    }
+//     // bcrypt를 사용하여 검증 코드 확인
+//     if (user && (req.verificationCode, user.verificationCode)) {
+//       // 검증 코드를 제외한 사용자 정보 추출
+//       const { verificationCode, ...userWithoutCode } = user;
 
-    // 검증 코드 확인
-    if (user.verificationCode !== verificationCode) {
-      return new Response(
-        JSON.stringify({ error: "Invalid verification code" }),
-        { status: 401 }
-      );
-    }
+//       // JWT 토큰 생성
+//       const accessToken = signJwtAccessToken(userWithoutCode);
 
-    // 사용자 삭제
-    await prisma.users.delete({ where: { email: email } });
+//       const result = {
+//         ...userWithoutCode,
+//         accessToken,
+//       };
+//       return new Response(JSON.stringify(result), { status: 200 });
+//     }
 
-    return new Response(
-      JSON.stringify({ message: "User successfully deleted" }),
-      { status: 200 }
-    );
-  } catch (error) {
-    // 에러 처리
-    console.error("Delete user error:", error.message);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-    });
-  }
-}
+//     return new Response(
+//       JSON.stringify({ error: "Invalid verification code" }),
+//       { status: 401 }
+//     );
+//   } catch (error) {
+//     if (error instanceof Error) {
+//       logger.error(error.message);
+//       console.error("Login error:", error.message);
+//       return new Response(JSON.stringify({ error: "Internal server error" }), {
+//         status: 500,
+//       });
+//     }
+//   }
+// }
 
 //검증코드 발송
 export async function sendVerificationCode(req: any) {
@@ -198,7 +173,7 @@ export async function sendVerificationCode(req: any) {
         data: {
           email: req.email,
           verification_code: verificationCode,
-          expires_at: new Date(Date.now() + 18000000), //시간제한 30분 제한시간후 데이터 삭제
+          expires_at: new Date(Date.now() + 180000), //시간제한 3분 제한시간후 데이터 삭제
         },
       });
       setTimeout(async () => {
@@ -219,13 +194,79 @@ export async function sendVerificationCode(req: any) {
     }
 
     // 이메일 전송
-    await sendVerificationEmail(req.email, verificationCode);
+    const emailSendResult = await sendVerificationEmail(
+      req.email,
+      verificationCode
+    );
+    if (emailSendResult.success) {
+      console.log("xxxxx");
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Verification code sent successfully",
+        })
+      );
+    } else {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "Failed to send verification code",
+        })
+      );
+    }
   } catch (error) {
     // 에러 처리
     console.error("Error sending verification code:", error.message);
+    return new Response(
+      JSON.stringify({ success: false, message: error.message })
+    );
   }
 }
 
+// // 회원탈퇴 함수
+// export async function deleteUser(req: any) {
+//   try {
+//     const { email, verificationCode }: DeleteUserRequestBody = await req.json();
+
+//     // 요청 본문 검증
+//     if (!email || !verificationCode) {
+//       return new Response(
+//         JSON.stringify({ error: "사용자 ID와 검증 코드를 입력해 주세요." }),
+//         { status: 400 }
+//       );
+//     }
+
+//     // 사용자 확인
+//     const user = await prisma.users.findUnique({ where: { email: email } });
+//     if (!user) {
+//       return new Response(JSON.stringify({ error: "User not found" }), {
+//         status: 404,
+//       });
+//     }
+
+//     // 검증 코드 확인
+//     if (user.verificationCode !== verificationCode) {
+//       return new Response(
+//         JSON.stringify({ error: "Invalid verification code" }),
+//         { status: 401 }
+//       );
+//     }
+
+//     // 사용자 삭제
+//     await prisma.users.delete({ where: { email: email } });
+
+//     return new Response(
+//       JSON.stringify({ message: "User successfully deleted" }),
+//       { status: 200 }
+//     );
+//   } catch (error) {
+//     // 에러 처리
+//     console.error("Delete user error:", error.message);
+//     return new Response(JSON.stringify({ error: "Internal server error" }), {
+//       status: 500,
+//     });
+//   }
+// }
 // // src/controller/userController.ts
 
 // import { NextApiRequest, NextApiResponse } from "next";
