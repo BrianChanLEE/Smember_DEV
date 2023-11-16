@@ -1,4 +1,3 @@
-import { stringify } from "./../../../../node_modules/postcss/lib/postcss.d";
 import { Params } from "next/dist/shared/lib/router/utils/route-matcher";
 
 import {
@@ -8,6 +7,7 @@ import {
 } from "@/src/_services/userService";
 
 interface RegisterRequestBody {
+  name: string;
   email: string;
   verificationCode: number;
   createdAt: Date;
@@ -40,22 +40,22 @@ export async function POST(
         const data = await request.json();
         const body: LoginRequestBody = data;
 
-        // 요청 본문 검증
-        if (!body.username || !body.verificationCode) {
-          return new Response(
-            JSON.stringify({ error: "이메일과 검증 코드를 입력해 주세요." }),
-            { status: 400 }
-          );
-        }
+        // // 요청 본문 검증
+        // if (!body.username || !body.verificationCode) {
+        //   return new Response(
+        //     JSON.stringify({ error: "이메일과 검증 코드를 입력해 주세요." }),
+        //     { status: 400 }
+        //   );
+        // }
 
         const loginResult = await loginUser(body);
-
-        if (loginResult) {
-          // 로그인 성공 및 accessToken 포함하여 응답
+        console.log(loginResult);
+        if (loginResult.status === 200) {
           return new Response(
             JSON.stringify({
               success: true,
               message: "Login successful",
+              loginResult,
             }),
             { status: 200 }
           );
@@ -78,6 +78,7 @@ export async function POST(
           );
         }
       }
+
       break;
 
     case "register":
@@ -86,9 +87,11 @@ export async function POST(
         const body: RegisterRequestBody = data;
 
         // 입력값 검증
-        if (!body.email || !body.verificationCode) {
+        if (!body.name || !body.email || !body.verificationCode) {
           return new Response(
-            JSON.stringify({ error: "Missing email or verification code" }),
+            JSON.stringify({
+              error: "Missing email, name or verification code",
+            }),
             { status: 401 }
           );
         }
@@ -136,7 +139,11 @@ export async function POST(
         // 결과에 따른 처리
         if (result) {
           return new Response(
-            JSON.stringify({ success: true, message: "code successful" }),
+            JSON.stringify({
+              success: true,
+              message: "code successful",
+              result,
+            }),
             { status: 200 }
           );
         } else {

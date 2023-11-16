@@ -46,6 +46,7 @@ export async function registerUser(req: any) {
     const newUser = await prisma.users.create({
       data: {
         email: req.email,
+        name: req.name,
         verificationCode: req.verificationCode,
         createdAt: new Date(),
         isVerified: false,
@@ -81,29 +82,41 @@ export async function registerUser(req: any) {
 export async function loginUser(req: any) {
   try {
     if (!req.username || !req.verificationCode) {
-      return { error: "이메일과 검증 코드를 입력해 주세요.", status: 400 };
+      return new Response(
+        JSON.stringify({ error: "이메일과 검증 코드를 입력해 주세요." }),
+        { status: 400 }
+      );
     }
 
     const user = await prisma.users.findUnique({
       where: { email: req.username },
     });
 
-    if (!user) {
-      return { error: "User not found", status: 404 };
-    }
-
-    if (await bcrypt.compare(req.verificationCode, user.verificationCode)) {
+    if (user && (await (req.verificationCode, user.verificationCode))) {
       const { verificationCode, ...userWithoutCode } = user;
       const accessToken = signJwtAccessToken(userWithoutCode);
-      return { ...userWithoutCode, accessToken, status: 200 };
+      const result = {
+        ...userWithoutCode,
+        accessToken,
+      };
+      return new Response(
+        JSON.stringify({
+          result,
+        })
+      );
     } else {
-      return { error: "Invalid verification code", status: 401 };
+      return new Response(JSON.stringify(null), {
+        status: 401,
+      });
     }
   } catch (error) {
     logger.error(error.message);
-    return { error: "Internal server error", status: 500 };
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+    });
   }
 }
+
 // export async function loginUser(req: any) {
 //   try {
 //     // // 요청 본문 검증

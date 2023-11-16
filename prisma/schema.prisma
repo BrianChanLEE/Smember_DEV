@@ -176,20 +176,6 @@ model member_agreement {
   @@index([agreement_title], map: "fk_agreement_title")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model notices {
-  id        Int            @id @default(autoincrement())
-  subject   String         @db.VarChar(50)
-  contents  String         @db.VarChar(2000)
-  status    notices_status
-  user_id   Int?           @db.UnsignedInt
-  StartDate DateTime       @db.Date
-  EndDate   DateTime       @db.Date
-  users     users?         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "notices_FK")
-
-  @@index([user_id], map: "notices_FK")
-}
-
 model rel_store__tag {
   tag_id    BigInt
   store_id  BigInt
@@ -236,7 +222,7 @@ model store {
   created_at     DateTime?        @db.DateTime(6)
   updated_at     DateTime?        @db.DateTime(6)
   removed_at     DateTime?        @db.DateTime(6)
-  member_id      BigInt
+  member_id      BigInt?
   lat            Float?           @db.Float
   lng            Float?           @db.Float
   createdAt      DateTime?        @db.DateTime(6)
@@ -245,7 +231,7 @@ model store {
   free_store     free_store?
   rel_store__tag rel_store__tag[]
   review         review[]
-  member         member           @relation(fields: [member_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_store__member_id")
+  member         member?          @relation(fields: [member_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_store__member_id")
   token_order    token_order[]
 
   @@index([member_id], map: "fk_store__member_id")
@@ -289,14 +275,34 @@ model token_order {
 }
 
 model users {
-  id               Int        @id @default(autoincrement()) @db.UnsignedInt
-  email            String     @unique(map: "email") @db.VarChar(255)
-  role             users_role @default(User)
-  verificationCode String?    @db.VarChar(255)
-  isVerified       Boolean    @default(false)
-  createdAt        DateTime?  @db.DateTime(0)
-  updatedAt        DateTime?  @db.DateTime(0)
-  notices          notices[]
+  id                     Int            @id @default(autoincrement()) @db.UnsignedInt
+  email                  String         @unique(map: "email") @db.VarChar(255)
+  role                   users_role     @default(User)
+  verificationCode       String?        @db.VarChar(255)
+  isVerified             Boolean        @default(false)
+  createdAt              DateTime?      @default(now()) @db.Timestamp(0)
+  updatedAt              DateTime?      @default(now()) @db.Timestamp(0)
+  subscribed             Boolean        @default(false)
+  masterbank_wallet_addr String?        @db.VarChar(255)
+  name                   String         @db.VarChar(128)
+  referral_code          String?        @db.VarChar(45)
+  like                   like[]
+  notices                notices[]
+  subscription           subscription[]
+}
+
+model notices {
+  id        Int            @id @default(autoincrement())
+  subject   String         @db.VarChar(50)
+  contents  String         @db.VarChar(2000)
+  status    notices_status @default(PUBLIC)
+  user_id   Int?           @db.UnsignedInt
+  StartDate DateTime?      @db.Date
+  EndDate   DateTime?      @db.Date
+  like      like[]
+  users     users?         @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "notices_FK")
+
+  @@index([user_id], map: "notices_FK")
 }
 
 model verification_codes {
@@ -305,6 +311,28 @@ model verification_codes {
   verification_code String    @db.VarChar(255)
   created_at        DateTime? @default(now()) @db.DateTime(0)
   expires_at        DateTime? @db.DateTime(0)
+}
+
+model subscription {
+  id        Int       @id @default(autoincrement())
+  message   String?   @db.VarChar(255)
+  user_id   Int?      @db.UnsignedInt
+  createdAt DateTime? @default(now()) @db.DateTime(0)
+  users     users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "subscription_ibfk_1")
+
+  @@index([user_id], map: "user_id")
+}
+
+model like {
+  id        Int       @id @default(autoincrement())
+  user_id   Int       @db.UnsignedInt
+  notice_id Int
+  createdAt DateTime? @default(now()) @db.DateTime(0)
+  users     users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "like_ibfk_1")
+  notices   notices   @relation(fields: [notice_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "like_ibfk_2")
+
+  @@unique([user_id, notice_id], map: "user_id")
+  @@index([notice_id], map: "notice_id")
 }
 
 enum users_role {
